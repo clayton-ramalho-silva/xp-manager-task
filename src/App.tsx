@@ -14,10 +14,12 @@ import {
   Calendar as GanttIcon,
   Users,
   LogOut,
-  Trash2
+  Trash2,
+  FileDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project, UserStory, Iteration, User } from './types';
+import { exportProjectToPDF } from './utils/pdfExport';
 import Backlog from './components/Backlog';
 import Kanban from './components/Kanban';
 import Calendar from './components/Calendar';
@@ -34,6 +36,7 @@ export default function App() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -95,6 +98,22 @@ export default function App() {
       setIsNewProjectModalOpen(false);
       setNewProjectName('');
       setNewProjectDesc('');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!selectedProject) return;
+    setIsExporting(true);
+    try {
+      const res = await fetch(`/api/projects/${selectedProject.id}/stories`);
+      if (res.ok) {
+        const stories = await res.json();
+        await exportProjectToPDF(selectedProject, stories);
+      }
+    } catch (err) {
+      console.error('Export failed', err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -267,13 +286,28 @@ export default function App() {
                   {view === 'backlog' ? 'Product Backlog' : view === 'kanban' ? 'Iteration Board' : view === 'actions' ? 'Gestão de Ações' : 'Calendar'}
                 </span>
               </div>
-              <button 
-                onClick={() => handleDeleteProject(selectedProject.id)}
-                className="p-2 hover:bg-red-500/10 text-slate-500 hover:text-red-400 rounded-lg transition-all"
-                title="Excluir Projeto"
-              >
-                <Trash2 size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[#1a1e28] hover:bg-[#252a38] text-slate-300 hover:text-white rounded-lg transition-all text-sm border border-[#252a38] disabled:opacity-50"
+                  title="Exportar Relatório PDF"
+                >
+                  {isExporting ? (
+                    <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <FileDown size={16} />
+                  )}
+                  <span>Exportar PDF</span>
+                </button>
+                <button 
+                  onClick={() => handleDeleteProject(selectedProject.id)}
+                  className="p-2 hover:bg-red-500/10 text-slate-500 hover:text-red-400 rounded-lg transition-all"
+                  title="Excluir Projeto"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
             </header>
 
             <div className="flex-1 overflow-auto p-8">
