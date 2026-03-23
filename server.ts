@@ -66,6 +66,15 @@ db.exec(`
     observation TEXT,
     FOREIGN KEY (story_id) REFERENCES user_stories (id)
   );
+
+  CREATE TABLE IF NOT EXISTS task_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER,
+    description TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES tasks (id)
+  );
 `);
 
 // Migration: Add observation column to tasks if it doesn't exist
@@ -288,7 +297,7 @@ async function startServer() {
     res.json(tasks);
   });
 
-  app.post('/api/tasks', authenticate, (req, res) => {    
+  app.post('/api/tasks', authenticate, (req, res) => {
     const { story_id, title, status, due_date, observation } = req.body;
     // Get max position for this story
     const maxPos = db.prepare('SELECT MAX(position) as maxPos FROM tasks WHERE story_id = ?').get(story_id) as any;
@@ -323,8 +332,55 @@ async function startServer() {
   });
 
   app.delete('/api/tasks/:id', authenticate, (req, res) => {
+    db.prepare('DELETE FROM task_actions WHERE task_id = ?').run(req.params.id);
     db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id);
     res.json({ success: true });
+  });
+
+  // Task Actions
+  app.get('/api/tasks/:taskId/actions', authenticate, (req, res) => {
+    const actions = db.prepare('SELECT * FROM task_actions WHERE task_id = ? ORDER BY created_at ASC').all(req.params.taskId);
+    res.json(actions);
+  });
+
+  app.post('/api/tasks/:taskId/actions', authenticate, (req, res) => {
+    const { description } = req.body;
+    const result = db.prepare('INSERT INTO task_actions (task_id, description) VALUES (?, ?)').run(req.params.taskId, description);
+    res.json({ id: result.lastInsertRowid, task_id: Number(req.params.taskId), description, completed: 0 });
+  });
+
+  app.put('/api/task-actions/:id', authenticate, (req, res) => {
+    const { completed, description } = req.body;
+    const current = db.prepare('SELECT * FROM task_actions WHERE id = ?').get(req.params.id) as any;
+    if (!current) return res.status(404).json({ error: 'Action not found' });
+
+    db.prepare('UPDATE task_actions SET completed = ?, description = ? WHERE id = ?')
+      .run(
+        completed !== undefined ? (completed ? 1 : 0) : current.completed,
+        description ?? current.description,
+        req.params.id
+      );
+    res.json({ success: true });
+  });
+
+  app.delete('/api/task-actions/:id', authenticate, (req, res) => {
+    db.prepare('DELETE FROM task_actions WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get('/api/projects/:projectId/actions', authenticate, (req, res) => {
+    const actions = db.prepare(`
+      SELECT 
+        ta.*, 
+        t.title as task_title, 
+        us.title as story_title
+      FROM task_actions ta
+      JOIN tasks t ON ta.task_id = t.id
+      JOIN user_stories us ON t.story_id = us.id
+      WHERE us.project_id = ?
+      ORDER BY ta.created_at DESC
+    `).all(req.params.projectId);
+    res.json(actions);
   });
 
   // Vite Integration

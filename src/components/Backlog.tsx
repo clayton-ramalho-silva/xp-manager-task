@@ -12,10 +12,14 @@ import {
   Star,
   Zap,
   Calendar,
-  MoreHorizontal
+  MoreHorizontal,
+  Circle,
+  X,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Dropdown } from './Dropdown';
+import TaskActions from './TaskActions';
 import {
   DndContext,
   closestCenter,
@@ -510,52 +514,55 @@ export default function Backlog({ project }: BacklogProps) {
                         {story.tasks && story.tasks.length > 0 ? (
                           <div className="space-y-2">
                             {story.tasks.map(task => (
-                              <div key={task.id} className="flex items-center justify-between bg-[#13161e] p-3 rounded-lg border border-[#252a38] group/task">
-                                <div className="flex items-center gap-3">
-                                  <button 
-                                    onClick={() => handleToggleTaskStatus(task)}
-                                    className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                                      task.status === 'done' 
-                                        ? 'bg-emerald-500 border-emerald-500 text-white' 
-                                        : 'border-[#252a38] hover:border-slate-500'
-                                    }`}
-                                  >
-                                    {task.status === 'done' && <CheckCircle2 size={10} />}
-                                  </button>
-                                  <div className="min-w-0">
-                                    <span className={`text-xs block ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-                                      {task.title}
-                                    </span>
-                                    {task.observation && (
-                                      <p className="text-[10px] text-slate-500 italic mt-0.5">{task.observation}</p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  {task.due_date && (
-                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[10px] text-indigo-400 font-mono font-bold">
-                                      <Calendar size={12} />
-                                      <span>{formatDate(task.due_date)}</span>
+                              <div key={task.id} className="flex flex-col bg-[#13161e] p-3 rounded-lg border border-[#252a38] group/task">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <button 
+                                      onClick={() => handleToggleTaskStatus(task)}
+                                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                        task.status === 'done' 
+                                          ? 'bg-emerald-500 border-emerald-500 text-white' 
+                                          : 'border-[#252a38] hover:border-slate-500'
+                                      }`}
+                                    >
+                                      {task.status === 'done' && <CheckCircle2 size={10} />}
+                                    </button>
+                                    <div className="min-w-0">
+                                      <span className={`text-xs block ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                                        {task.title}
+                                      </span>
+                                      {task.observation && (
+                                        <p className="text-[10px] text-slate-500 italic mt-0.5">{task.observation}</p>
+                                      )}
                                     </div>
-                                  )}
-                                  <div className="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity">
-                                    <button 
-                                      onClick={() => {
-                                        setEditingTask(task);
-                                        setIsEditTaskModalOpen(true);
-                                      }}
-                                      className="p-1 hover:text-white text-slate-500"
-                                    >
-                                      <Edit2 size={12} />
-                                    </button>
-                                    <button 
-                                      onClick={() => handleDeleteTask(task.id)}
-                                      className="p-1 hover:text-red-400 text-slate-500"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
+                                  </div>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    {task.due_date && (
+                                      <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[10px] text-indigo-400 font-mono font-bold">
+                                        <Calendar size={12} />
+                                        <span>{formatDate(task.due_date)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity">
+                                      <button 
+                                        onClick={() => {
+                                          setEditingTask(task);
+                                          setIsEditTaskModalOpen(true);
+                                        }}
+                                        className="p-1 hover:text-white text-slate-500"
+                                      >
+                                        <Edit2 size={12} />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteTask(task.id)}
+                                        className="p-1 hover:text-red-400 text-slate-500"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
+                                <TaskActions taskId={task.id} />
                               </div>
                             ))}
                           </div>

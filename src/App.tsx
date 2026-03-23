@@ -21,6 +21,7 @@ import { Project, UserStory, Iteration, User } from './types';
 import Backlog from './components/Backlog';
 import Kanban from './components/Kanban';
 import Calendar from './components/Calendar';
+import ActionsView from './components/ActionsView';
 import Login from './components/Login';
 import UserManagement from './components/UserManagement';
 
@@ -29,7 +30,7 @@ export default function App() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [view, setView] = useState<'backlog' | 'kanban' | 'calendar' | 'users'>('backlog');
+  const [view, setView] = useState<'backlog' | 'kanban' | 'calendar' | 'users' | 'actions'>('backlog');
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
@@ -184,6 +185,17 @@ export default function App() {
                 <span>Backlog</span>
               </button>
               <button
+                onClick={() => setView('actions')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                  view === 'actions' 
+                    ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+                    : 'hover:bg-[#1a1e28] text-slate-400'
+                }`}
+              >
+                <CheckCircle2 size={18} />
+                <span>Ações</span>
+              </button>
+              <button
                 onClick={() => setView('kanban')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                   view === 'kanban' 
@@ -252,7 +264,7 @@ export default function App() {
                 <h1 className="text-xl font-semibold">{selectedProject.name}</h1>
                 <div className="h-4 w-px bg-[#252a38]" />
                 <span className="text-sm text-slate-500 font-mono uppercase tracking-widest">
-                  {view === 'backlog' ? 'Product Backlog' : view === 'kanban' ? 'Iteration Board' : 'Calendar'}
+                  {view === 'backlog' ? 'Product Backlog' : view === 'kanban' ? 'Iteration Board' : view === 'actions' ? 'Gestão de Ações' : 'Calendar'}
                 </span>
               </div>
               <button 
@@ -278,6 +290,8 @@ export default function App() {
                     <Backlog project={selectedProject} />
                   ) : view === 'kanban' ? (
                     <Kanban project={selectedProject} />
+                  ) : view === 'actions' ? (
+                    <ActionsView project={selectedProject} />
                   ) : (
                     <Calendar project={selectedProject} />
                   )}

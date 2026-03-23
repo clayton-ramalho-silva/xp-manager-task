@@ -8,11 +8,15 @@ import {
   MoreHorizontal,
   ArrowRight,
   Calendar,
-  Eye
+  Eye,
+  Circle,
+  X,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDate } from '../utils/dateUtils';
 import { Project, UserStory, Iteration, Task } from '../types';
+import TaskActions from './TaskActions';
 
 interface KanbanProps {
   project: Project;
@@ -410,6 +414,7 @@ export default function Kanban({ project }: KanbanProps) {
                             )}
                           </div>
                         </div>
+                        <TaskActions taskId={task.id} />
                         {task.due_date && (
                           <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[10px] text-indigo-400 font-mono font-bold">
                             <Calendar size={12} />
