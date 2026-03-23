@@ -33,6 +33,7 @@ export interface Task {
   title: string;
   status: 'todo' | 'done';
   due_date?: string;
+  observation?: string;
 }
 
 export interface User {

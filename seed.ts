@@ -111,8 +111,8 @@ function seed() {
         .run(projectId, iterationId, s.title, s.description, s.points, s.priority, s.status);
       const storyId = storyResult.lastInsertRowid;
 
-      for (const t of s.tasks) {
-        db.prepare('INSERT INTO tasks (story_id, title, status) VALUES (?, ?, ?)').run(storyId, t, 'todo');
+      for (const t of s.tasks) {        
+        db.prepare('INSERT INTO tasks (story_id, title, status, observation) VALUES (?, ?, ?, ?)').run(storyId, t, 'todo', '');
       }
     }
   }

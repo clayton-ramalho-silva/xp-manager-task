@@ -63,9 +63,17 @@ db.exec(`
     status TEXT DEFAULT 'todo',
     position INTEGER DEFAULT 0,
     due_date TEXT,
+    observation TEXT,
     FOREIGN KEY (story_id) REFERENCES user_stories (id)
   );
 `);
+
+// Migration: Add observation column to tasks if it doesn't exist
+try {
+  db.prepare('ALTER TABLE tasks ADD COLUMN observation TEXT').run();
+} catch (e) {
+  // Column already exists or table doesn't exist yet
+}
 
 // Seed Admin User
 const adminExists = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@example.com');
@@ -280,13 +288,13 @@ async function startServer() {
     res.json(tasks);
   });
 
-  app.post('/api/tasks', authenticate, (req, res) => {
-    const { story_id, title, status, due_date } = req.body;
+  app.post('/api/tasks', authenticate, (req, res) => {    
+    const { story_id, title, status, due_date, observation } = req.body;
     // Get max position for this story
     const maxPos = db.prepare('SELECT MAX(position) as maxPos FROM tasks WHERE story_id = ?').get(story_id) as any;
     const nextPos = (maxPos?.maxPos || 0) + 1;
     
-    const result = db.prepare('INSERT INTO tasks (story_id, title, status, position, due_date) VALUES (?, ?, ?, ?, ?)').run(story_id, title, status || 'todo', nextPos, due_date);
+    const result = db.prepare('INSERT INTO tasks (story_id, title, status, position, due_date, observation) VALUES (?, ?, ?, ?, ?, ?)').run(story_id, title, status || 'todo', nextPos, due_date, observation);
     res.json({ id: result.lastInsertRowid, ...req.body, position: nextPos });
   });
 
@@ -305,12 +313,12 @@ async function startServer() {
   });
 
   app.put('/api/tasks/:id', authenticate, (req, res) => {
-    const { status, title, due_date } = req.body;
+    const { status, title, due_date, observation } = req.body;
     const current = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id) as any;
     if (!current) return res.status(404).json({ error: 'Task not found' });
 
-    db.prepare('UPDATE tasks SET status = ?, title = ?, due_date = ? WHERE id = ?')
-      .run(status ?? current.status, title ?? current.title, due_date ?? current.due_date, req.params.id);
+    db.prepare('UPDATE tasks SET status = ?, title = ?, due_date = ?, observation = ? WHERE id = ?')
+      .run(status ?? current.status, title ?? current.title, due_date ?? current.due_date, observation ?? current.observation, req.params.id);
     res.json({ success: true });
   });
 

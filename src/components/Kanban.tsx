@@ -285,11 +285,16 @@ export default function Kanban({ project }: KanbanProps) {
                           }`}>
                             {task.status === 'done' && <CheckCircle2 size={10} />}
                           </div>
-                          <span className={`text-[11px] truncate ${
-                            task.status === 'done' ? 'text-slate-600 line-through' : 'text-slate-400'
-                          }`}>
-                            {task.title}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className={`text-[11px] block truncate ${
+                              task.status === 'done' ? 'text-slate-600 line-through' : 'text-slate-400'
+                            }`}>
+                              {task.title}
+                            </span>
+                            {task.observation && (
+                              <p className="text-[9px] text-slate-600 italic mt-0.5 truncate">{task.observation}</p>
+                            )}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -396,9 +401,14 @@ export default function Kanban({ project }: KanbanProps) {
                           >
                             {task.status === 'done' && <CheckCircle2 size={12} />}
                           </button>
-                          <span className={`text-sm ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-                            {task.title}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className={`text-sm block ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                              {task.title}
+                            </span>
+                            {task.observation && (
+                              <p className="text-[10px] text-slate-500 italic mt-0.5">{task.observation}</p>
+                            )}
+                          </div>
                         </div>
                         {task.due_date && (
                           <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[10px] text-indigo-400 font-mono font-bold">
