@@ -34,6 +34,17 @@ export interface Task {
   status: 'todo' | 'done';
   due_date?: string;
   observation?: string;
+  actions?: TaskAction[];
+}
+
+export interface TaskAction {
+  id: number;
+  task_id: number;
+  description: string;
+  completed: boolean;
+  created_at?: string;
+  task_title?: string;
+  story_title?: string;
 }
 
 export interface User {
