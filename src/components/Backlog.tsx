@@ -91,9 +91,14 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task, onToggleStatu
         >
           {task.status === 'done' && <CheckCircle2 size={12} />}
         </button>
-        <span className={`text-sm truncate ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-          {task.title}
-        </span>
+        <div className="min-w-0 flex-1">
+          <span className={`text-sm block truncate ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+            {task.title}
+          </span>
+          {task.observation && (
+            <p className="text-[10px] text-slate-500 italic mt-0.5 truncate">{task.observation}</p>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-3 shrink-0">
         {task.due_date && (
@@ -141,6 +146,7 @@ export default function Backlog({ project }: BacklogProps) {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDate, setNewTaskDate] = useState('');
+  const [newTaskObservation, setNewTaskObservation] = useState('');
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const [taskToDeleteId, setTaskToDeleteId] = useState<number | null>(null);
   const [expandedStories, setExpandedStories] = useState<Set<number>>(new Set());
@@ -243,7 +249,8 @@ export default function Backlog({ project }: BacklogProps) {
         story_id: activeStoryId, 
         title: newTaskTitle,
         status: 'todo',
-        due_date: newTaskDate
+        due_date: newTaskDate,
+        observation: newTaskObservation
       }),
     });
 
@@ -252,6 +259,7 @@ export default function Backlog({ project }: BacklogProps) {
       setIsNewTaskModalOpen(false);
       setNewTaskTitle('');
       setNewTaskDate('');
+      setNewTaskObservation('');
       setActiveStoryId(null);
     }
   };
@@ -289,7 +297,8 @@ export default function Backlog({ project }: BacklogProps) {
       body: JSON.stringify({ 
         title: editingTask.title,
         status: editingTask.status,
-        due_date: editingTask.due_date
+        due_date: editingTask.due_date,
+        observation: editingTask.observation
       }),
     });
 
@@ -513,9 +522,14 @@ export default function Backlog({ project }: BacklogProps) {
                                   >
                                     {task.status === 'done' && <CheckCircle2 size={10} />}
                                   </button>
-                                  <span className={`text-xs ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-                                    {task.title}
-                                  </span>
+                                  <div className="min-w-0">
+                                    <span className={`text-xs block ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                                      {task.title}
+                                    </span>
+                                    {task.observation && (
+                                      <p className="text-[10px] text-slate-500 italic mt-0.5">{task.observation}</p>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                   {task.due_date && (
@@ -902,6 +916,15 @@ export default function Backlog({ project }: BacklogProps) {
                   className="w-full bg-[#0d0f14] border border-[#252a38] rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors text-slate-300"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Observação</label>
+                <textarea
+                  value={editingTask.observation || ''}
+                  onChange={(e) => setEditingTask({ ...editingTask, observation: e.target.value })}
+                  className="w-full bg-[#0d0f14] border border-[#252a38] rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors h-20 resize-none text-sm"
+                  placeholder="Observações sobre a tarefa..."
+                />
+              </div>
               <div className="flex justify-end gap-3 mt-8">
                 <button
                   type="button"
@@ -954,6 +977,15 @@ export default function Backlog({ project }: BacklogProps) {
                   value={newTaskDate}
                   onChange={(e) => setNewTaskDate(e.target.value)}
                   className="w-full bg-[#0d0f14] border border-[#252a38] rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors text-slate-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Observação</label>
+                <textarea
+                  value={newTaskObservation}
+                  onChange={(e) => setNewTaskObservation(e.target.value)}
+                  className="w-full bg-[#0d0f14] border border-[#252a38] rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 transition-colors h-20 resize-none text-sm"
+                  placeholder="Observações sobre a tarefa..."
                 />
               </div>
               <div className="flex justify-end gap-3 mt-8">
