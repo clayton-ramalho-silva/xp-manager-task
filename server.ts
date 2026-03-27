@@ -291,6 +291,20 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.put('/api/stories/reorder', authenticate, (req, res) => {
+    const { stories } = req.body; // Array of { id, priority }
+    const update = db.prepare('UPDATE user_stories SET priority = ? WHERE id = ?');
+    
+    const transaction = db.transaction((storyList) => {
+      for (const story of storyList) {
+        update.run(story.priority, story.id);
+      }
+    });
+
+    transaction(stories);
+    res.json({ success: true });
+  });
+
   // Tasks
   app.get('/api/stories/:storyId/tasks', authenticate, (req, res) => {
     const tasks = db.prepare('SELECT * FROM tasks WHERE story_id = ? ORDER BY position ASC, id ASC').all(req.params.storyId);
