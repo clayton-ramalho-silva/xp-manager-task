@@ -469,6 +469,15 @@ export default function Backlog({ project }: BacklogProps) {
     const res = await fetch(`/api/projects/${project.id}/stories`);
     const data = await res.json();
     setStories(data);
+    
+    // Update viewingStory if it's open to reflect server-side changes (like story due_date)
+    setViewingStory(prev => {
+      if (!prev) return null;
+      const updated = data.find((s: UserStory) => s.id === prev.id);
+      return updated || prev;
+    });
+    
+    return data;
   };
 
   const fetchIterations = async () => {
@@ -540,7 +549,7 @@ export default function Backlog({ project }: BacklogProps) {
     });
 
     if (res.ok) {
-      fetchStories();
+      await fetchStories();
       setIsNewTaskModalOpen(false);
       setNewTaskTitle('');
       setNewTaskDate('');
@@ -562,11 +571,7 @@ export default function Backlog({ project }: BacklogProps) {
     });
 
     if (res.ok) {
-      fetchStories();
-      if (viewingStory) {
-        const updatedTasks = viewingStory.tasks?.filter(t => t.id !== taskToDeleteId) || [];
-        setViewingStory({ ...viewingStory, tasks: updatedTasks });
-      }
+      await fetchStories();
       setIsDeleteTaskModalOpen(false);
       setTaskToDeleteId(null);
     }
@@ -588,13 +593,8 @@ export default function Backlog({ project }: BacklogProps) {
     });
 
     if (res.ok) {
-      fetchStories();
+      await fetchStories();
       setIsEditTaskModalOpen(false);
-      // Update viewingStory if needed
-      if (viewingStory) {
-        const updatedTasks = viewingStory.tasks?.map(t => t.id === editingTask.id ? editingTask : t) || [];
-        setViewingStory({ ...viewingStory, tasks: updatedTasks });
-      }
       setEditingTask(null);
     }
   };
@@ -608,11 +608,7 @@ export default function Backlog({ project }: BacklogProps) {
     });
 
     if (res.ok) {
-      fetchStories();
-      if (viewingStory) {
-        const updatedTasks = viewingStory.tasks?.map(t => t.id === task.id ? { ...t, status: newStatus as any } : t) || [];
-        setViewingStory({ ...viewingStory, tasks: updatedTasks });
-      }
+      await fetchStories();
     }
   };
 
@@ -995,6 +991,12 @@ export default function Backlog({ project }: BacklogProps) {
                   <span className="text-xs font-mono text-indigo-400">{viewingStory.points} pontos</span>
                 </div>
                 <h2 className="text-2xl font-bold">{viewingStory.title}</h2>
+                {viewingStory.due_date && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-indigo-400 font-mono">
+                    <Calendar size={14} />
+                    <span>Previsão: {formatDate(viewingStory.due_date)}</span>
+                  </div>
+                )}
               </div>
               <button 
                 onClick={() => {

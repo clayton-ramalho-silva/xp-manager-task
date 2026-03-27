@@ -247,6 +247,13 @@ export default function Kanban({ project }: KanbanProps) {
       setStories([]);
     }
     setBacklogStories(allStories.filter(s => s.iteration_id === null));
+
+    // Update viewingStory if it's open to reflect server-side changes (like story due_date)
+    setViewingStory(prev => {
+      if (!prev) return null;
+      const updated = allStories.find(s => s.id === prev.id);
+      return updated || prev;
+    });
   };
 
   const handleCreateIteration = async (e: React.FormEvent) => {
@@ -281,15 +288,6 @@ export default function Kanban({ project }: KanbanProps) {
     
     // Refresh data
     await fetchData();
-    
-    // If we are viewing a story, refresh its tasks too
-    if (viewingStory) {
-      const storyRes = await fetch(`/api/stories/${viewingStory.id}`);
-      if (storyRes.ok) {
-        const updatedStory = await storyRes.json();
-        setViewingStory(updatedStory);
-      }
-    }
   };
 
   const handleAddToIteration = async (storyId: number) => {
