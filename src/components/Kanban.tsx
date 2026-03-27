@@ -142,13 +142,13 @@ const SortableKanbanStory: React.FC<SortableKanbanStoryProps> = ({
                   {task.status === 'done' && <CheckCircle2 size={10} />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className={`text-[11px] block truncate ${
+                  <span className={`text-[13px] block truncate ${
                     task.status === 'done' ? 'text-slate-600 line-through' : 'text-slate-400'
                   }`}>
                     {task.title}
                   </span>
                   {task.observation && (
-                    <p className="text-[9px] text-slate-600 italic mt-0.5 truncate">{task.observation}</p>
+                    <p className="text-[11px] text-slate-600 italic mt-0.5 truncate">{task.observation}</p>
                   )}
                 </div>
               </button>

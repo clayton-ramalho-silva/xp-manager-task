@@ -81,9 +81,9 @@ export default function TaskActions({ taskId }: TaskActionsProps) {
   return (
     <div className="mt-3 pl-7 space-y-2 border-l border-[#252a38] ml-2">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-600">Checklist de Ações</span>
+        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600">Checklist de Ações</span>
         {actions.length > 0 && (
-          <span className="text-[9px] font-mono text-slate-600">
+          <span className="text-[11px] font-mono text-slate-600">
             {actions.filter(a => a.completed).length}/{actions.length}
           </span>
         )}
@@ -107,7 +107,7 @@ export default function TaskActions({ taskId }: TaskActionsProps) {
                     type="text"
                     value={editingDescription}
                     onChange={(e) => setEditingDescription(e.target.value)}
-                    className="flex-1 bg-[#0d0f14] border border-indigo-500/50 rounded px-2 py-0.5 text-[11px] focus:outline-none"
+                    className="flex-1 bg-[#0d0f14] border border-indigo-500/50 rounded px-2 py-0.5 text-[13px] focus:outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleUpdateAction(action.id);
                       if (e.key === 'Escape') setEditingActionId(null);
@@ -121,7 +121,7 @@ export default function TaskActions({ taskId }: TaskActionsProps) {
                   </button>
                 </div>
               ) : (
-                <span className={`text-[11px] truncate ${action.completed ? 'text-slate-600 line-through' : 'text-slate-400'}`}>
+                <span className={`text-[13px] truncate ${action.completed ? 'text-slate-600 line-through' : 'text-slate-400'}`}>
                   {action.description}
                 </span>
               )}
@@ -154,7 +154,7 @@ export default function TaskActions({ taskId }: TaskActionsProps) {
           placeholder="Nova ação..."
           value={newActionDescription}
           onChange={(e) => setNewActionDescription(e.target.value)}
-          className="flex-1 bg-transparent border-b border-transparent hover:border-[#252a38] focus:border-indigo-500/50 py-0.5 text-[10px] text-slate-500 focus:text-slate-300 focus:outline-none transition-colors"
+          className="flex-1 bg-transparent border-b border-transparent hover:border-[#252a38] focus:border-indigo-500/50 py-0.5 text-[12px] text-slate-500 focus:text-slate-300 focus:outline-none transition-colors"
         />
         <button 
           type="submit"

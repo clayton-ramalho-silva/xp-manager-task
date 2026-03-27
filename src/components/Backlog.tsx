@@ -98,11 +98,11 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({ task, onToggleStatu
           {task.status === 'done' && <CheckCircle2 size={12} />}
         </button>
         <div className="min-w-0 flex-1">
-          <span className={`text-sm block truncate ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+          <span className={`text-base block truncate ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
             {task.title}
           </span>
           {task.observation && (
-            <p className="text-[10px] text-slate-500 italic mt-0.5 truncate">{task.observation}</p>
+            <p className="text-xs text-slate-500 italic mt-0.5 truncate">{task.observation}</p>
           )}
         </div>
       </div>
