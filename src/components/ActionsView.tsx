@@ -238,17 +238,17 @@ export default function ActionsView({ project }: ActionsViewProps) {
                       </button>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-sm font-medium block ${action.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                      <span className={`text-base font-medium block ${action.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
                         {action.description}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span className="text-sm text-slate-400 flex items-center gap-1.5">
                           <ClipboardList size={12} className="text-slate-600" />
                           {action.task_title}
                         </span>
-                        <span className="text-[10px] text-slate-600 font-mono uppercase mt-0.5">
+                        <span className="text-xs text-slate-600 font-mono uppercase mt-0.5">
                           {action.story_title}
                         </span>
                       </div>

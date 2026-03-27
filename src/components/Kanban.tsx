@@ -11,12 +11,167 @@ import {
   Eye,
   Circle,
   X,
-  Check
+  Check,
+  GripVertical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDate } from '../utils/dateUtils';
 import { Project, UserStory, Iteration, Task } from '../types';
 import TaskActions from './TaskActions';
+import {
+  DndContext,
+  rectIntersection,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  DragOverlay,
+  useDroppable,
+  defaultDropAnimationSideEffects,
+  pointerWithin,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface KanbanProps {
+  project: Project;
+}
+
+interface SortableKanbanStoryProps {
+  story: UserStory;
+  onView: (story: UserStory) => void;
+  onToggleTask: (taskId: number, currentStatus: string) => void;
+  onMoveStory: (storyId: number, newStatus: string) => void;
+  nextColumnId?: string;
+}
+
+const SortableKanbanStory: React.FC<SortableKanbanStoryProps> = ({ 
+  story, 
+  onView, 
+  onToggleTask, 
+  onMoveStory,
+  nextColumnId 
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: story.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 100 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      layout
+      className="bg-[#1a1e28] border border-[#252a38] p-4 rounded-xl shadow-sm group relative"
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2">
+          <div 
+            {...attributes}
+            {...listeners}
+            className="p-1 text-slate-700 hover:text-slate-400 cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical size={14} />
+          </div>
+          <span className="text-[10px] font-mono text-indigo-400 font-bold bg-indigo-400/10 px-1.5 py-0.5 rounded">
+            {story.points} PTS
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={() => onView(story)}
+            className="p-1 hover:bg-indigo-500/10 rounded text-indigo-400 transition-colors"
+            title="Ver detalhes"
+          >
+            <Eye size={14} />
+          </button>
+          <button className="text-slate-600 hover:text-white transition-colors">
+            <MoreHorizontal size={14} />
+          </button>
+        </div>
+      </div>
+      <h4 className="text-sm font-medium mb-1">{story.title}</h4>
+      <p className="text-xs text-slate-500 line-clamp-2 mb-2">{story.description}</p>
+      
+      {story.due_date && (
+        <div className="flex items-center gap-1 text-[10px] text-indigo-400 font-mono mb-4">
+          <Calendar size={10} />
+          <span>{formatDate(story.due_date)}</span>
+        </div>
+      )}
+      
+      {story.tasks && story.tasks.length > 0 && (
+        <div className="mb-4 space-y-1.5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-mono text-slate-600 uppercase">Tarefas</span>
+            <span className="text-[10px] font-mono text-slate-600">
+              {story.tasks.filter(t => t.status === 'done').length}/{story.tasks.length}
+            </span>
+          </div>
+          {story.tasks.map(task => (
+            <div key={task.id} className="flex flex-col gap-1">
+              <button
+                onClick={() => onToggleTask(task.id, task.status)}
+                className="w-full flex items-center gap-2 text-left group/task"
+              >
+                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                  task.status === 'done' 
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                    : 'border-[#252a38] group-hover/task:border-slate-500'
+                }`}>
+                  {task.status === 'done' && <CheckCircle2 size={10} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={`text-[13px] block truncate ${
+                    task.status === 'done' ? 'text-slate-600 line-through' : 'text-slate-400'
+                  }`}>
+                    {task.title}
+                  </span>
+                  {task.observation && (
+                    <p className="text-[11px] text-slate-600 italic mt-0.5 truncate">{task.observation}</p>
+                  )}
+                </div>
+              </button>
+              <TaskActions taskId={task.id} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-1">
+        {nextColumnId && (
+          <button 
+            onClick={() => onMoveStory(story.id, nextColumnId)}
+            className="p-1.5 hover:bg-indigo-500/10 rounded text-indigo-400 transition-colors"
+            title="Mover para próxima etapa"
+          >
+            <ArrowRight size={14} />
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 interface KanbanProps {
   project: Project;
@@ -28,6 +183,35 @@ const COLUMNS = [
   { id: 'testing', title: 'Em Teste', color: 'bg-indigo-500' },
   { id: 'done', title: 'Concluído', color: 'bg-emerald-500' }
 ];
+
+interface KanbanColumnProps {
+  id: string;
+  title: string;
+  color: string;
+  count: number;
+  children: React.ReactNode;
+}
+
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ id, title, color, count, children }) => {
+  const { setNodeRef } = useDroppable({ id });
+
+  return (
+    <div ref={setNodeRef} className="flex flex-col min-h-0 h-full">
+      <div className="flex items-center justify-between mb-4 px-2">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${color}`} />
+          <h3 className="font-bold text-sm uppercase tracking-wider">{title}</h3>
+        </div>
+        <span className="text-xs font-mono text-slate-500 bg-[#1a1e28] px-2 py-0.5 rounded-full">
+          {count}
+        </span>
+      </div>
+      <div className="flex-1 bg-[#13161e]/50 border border-[#252a38] rounded-2xl p-4 overflow-y-auto space-y-4">
+        {children}
+      </div>
+    </div>
+  );
+};
 
 export default function Kanban({ project }: KanbanProps) {
   const [activeIteration, setActiveIteration] = useState<Iteration | null>(null);
@@ -63,6 +247,13 @@ export default function Kanban({ project }: KanbanProps) {
       setStories([]);
     }
     setBacklogStories(allStories.filter(s => s.iteration_id === null));
+
+    // Update viewingStory if it's open to reflect server-side changes (like story due_date)
+    setViewingStory(prev => {
+      if (!prev) return null;
+      const updated = allStories.find(s => s.id === prev.id);
+      return updated || prev;
+    });
   };
 
   const handleCreateIteration = async (e: React.FormEvent) => {
@@ -97,15 +288,6 @@ export default function Kanban({ project }: KanbanProps) {
     
     // Refresh data
     await fetchData();
-    
-    // If we are viewing a story, refresh its tasks too
-    if (viewingStory) {
-      const storyRes = await fetch(`/api/stories/${viewingStory.id}`);
-      if (storyRes.ok) {
-        const updatedStory = await storyRes.json();
-        setViewingStory(updatedStory);
-      }
-    }
   };
 
   const handleAddToIteration = async (storyId: number) => {
@@ -116,6 +298,112 @@ export default function Kanban({ project }: KanbanProps) {
       body: JSON.stringify({ iteration_id: activeIteration.id, status: 'todo' }),
     });
     fetchData();
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const [activeId, setActiveId] = useState<number | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as number);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as number;
+    const overId = over.id as string | number;
+
+    const activeStory = stories.find(s => s.id === activeId);
+    if (!activeStory) return;
+
+    // Find the containers
+    const activeContainer = activeStory.status;
+    const overContainer = COLUMNS.some(c => c.id === overId) 
+      ? overId as string 
+      : stories.find(s => s.id === overId)?.status;
+
+    if (!overContainer || activeContainer === overContainer) return;
+
+    setStories(prev => {
+      const activeIndex = prev.findIndex(s => s.id === activeId);
+      const overIndex = prev.findIndex(s => s.id === overId);
+
+      let newIndex;
+      if (COLUMNS.some(c => c.id === overId)) {
+        newIndex = prev.length;
+      } else {
+        newIndex = overIndex >= 0 ? overIndex : prev.length;
+      }
+
+      const newItems = [...prev];
+      const [movedItem] = newItems.splice(activeIndex, 1);
+      newItems.splice(newIndex, 0, { ...movedItem, status: overContainer as any });
+      
+      return newItems;
+    });
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const activeId = active.id as number;
+    const overId = over.id as string | number;
+
+    const activeStory = stories.find(s => s.id === activeId);
+    if (!activeStory) return;
+
+    const overContainer = COLUMNS.some(c => c.id === overId) 
+      ? overId as string 
+      : stories.find(s => s.id === overId)?.status;
+
+    if (!overContainer) return;
+
+    if (activeId !== overId || activeStory.status !== overContainer) {
+      const oldIndex = stories.findIndex((s) => s.id === activeId);
+      const newIndex = stories.findIndex((s) => s.id === overId);
+
+      const newStories = arrayMove(stories, oldIndex, newIndex === -1 ? stories.length : newIndex) as UserStory[];
+      
+      // Optimistic update
+      setStories(newStories);
+
+      // Persist status change if needed
+      if (activeStory.status !== overContainer) {
+        await fetch(`/api/stories/${activeStory.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: overContainer }),
+        });
+      }
+
+      // Persist reorder
+      const reorderPayload = newStories.map((story, index) => ({
+        id: story.id,
+        priority: newStories.length - index,
+      }));
+
+      await fetch('/api/stories/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stories: reorderPayload }),
+      });
+
+      fetchData();
+    }
   };
 
   if (!activeIteration) {
@@ -219,126 +507,76 @@ export default function Kanban({ project }: KanbanProps) {
       </div>
 
       <div className="flex-1 grid grid-cols-4 gap-6 min-h-0">
-        {COLUMNS.map(col => (
-          <div key={col.id} className="flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-4 px-2">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${col.color}`} />
-                <h3 className="font-bold text-sm uppercase tracking-wider">{col.title}</h3>
-              </div>
-              <span className="text-xs font-mono text-slate-500 bg-[#1a1e28] px-2 py-0.5 rounded-full">
-                {stories.filter(s => s.status === col.id).length}
-              </span>
-            </div>
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={pointerWithin}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          {COLUMNS.map(col => (
+            <KanbanColumn 
+              key={col.id} 
+              id={col.id} 
+              title={col.title} 
+              color={col.color}
+              count={stories.filter(s => s.status === col.id).length}
+            >
+              <SortableContext 
+                id={col.id}
+                items={stories.filter(s => s.status === col.id).map(s => s.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {stories.filter(s => s.status === col.id).map(story => (
+                  <SortableKanbanStory
+                    key={story.id}
+                    story={story}
+                    onView={(s) => {
+                      setViewingStory(s);
+                      setIsViewStoryModalOpen(true);
+                    }}
+                    onToggleTask={handleToggleTask}
+                    onMoveStory={handleMoveStory}
+                    nextColumnId={COLUMNS[COLUMNS.findIndex(c => c.id === col.id) + 1]?.id}
+                  />
+                ))}
 
-            <div className="flex-1 bg-[#13161e]/50 border border-[#252a38] rounded-2xl p-4 overflow-y-auto space-y-4">
-              {stories.filter(s => s.status === col.id).map(story => (
-                <motion.div
-                  layout
-                  key={story.id}
-                  className="bg-[#1a1e28] border border-[#252a38] p-4 rounded-xl shadow-sm group relative"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-mono text-indigo-400 font-bold bg-indigo-400/10 px-1.5 py-0.5 rounded">
-                      {story.points} PTS
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button 
-                        onClick={() => {
-                          setViewingStory(story);
-                          setIsViewStoryModalOpen(true);
-                        }}
-                        className="p-1 hover:bg-indigo-500/10 rounded text-indigo-400 transition-colors"
-                        title="Ver detalhes"
-                      >
-                        <Eye size={14} />
-                      </button>
-                      <button className="text-slate-600 hover:text-white transition-colors">
-                        <MoreHorizontal size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  <h4 className="text-sm font-medium mb-1">{story.title}</h4>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-2">{story.description}</p>
-                  
-                  {story.due_date && (
-                    <div className="flex items-center gap-1 text-[10px] text-indigo-400 font-mono mb-4">
-                      <Calendar size={10} />
-                      <span>{formatDate(story.due_date)}</span>
-                    </div>
-                  )}
-                  
-                  {story.tasks && story.tasks.length > 0 && (
-                    <div className="mb-4 space-y-1.5">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-mono text-slate-600 uppercase">Tarefas</span>
-                        <span className="text-[10px] font-mono text-slate-600">
-                          {story.tasks.filter(t => t.status === 'done').length}/{story.tasks.length}
-                        </span>
-                      </div>
-                      {story.tasks.map(task => (
-                        <button
-                          key={task.id}
-                          onClick={() => handleToggleTask(task.id, task.status)}
-                          className="w-full flex items-center gap-2 text-left group/task"
-                        >
-                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
-                            task.status === 'done' 
-                              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                              : 'border-[#252a38] group-hover/task:border-slate-500'
-                          }`}>
-                            {task.status === 'done' && <CheckCircle2 size={10} />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className={`text-[11px] block truncate ${
-                              task.status === 'done' ? 'text-slate-600 line-through' : 'text-slate-400'
-                            }`}>
-                              {task.title}
-                            </span>
-                            {task.observation && (
-                              <p className="text-[9px] text-slate-600 italic mt-0.5 truncate">{task.observation}</p>
-                            )}
-                          </div>
-                        </button>
+                {col.id === 'todo' && backlogStories.length > 0 && (
+                  <div className="pt-4 border-t border-[#252a38] mt-4">
+                    <h4 className="text-[10px] font-mono text-slate-600 uppercase mb-3 px-1">Disponível no Backlog</h4>
+                    <div className="space-y-2">
+                      {backlogStories.slice(0, 3).map(story => (
+                        <div key={story.id} className="flex items-center justify-between p-2 bg-[#0d0f14] rounded-lg border border-[#252a38] group">
+                          <span className="text-xs text-slate-500 truncate pr-2">{story.title}</span>
+                          <button 
+                            onClick={() => handleAddToIteration(story.id)}
+                            className="p-1 hover:bg-indigo-500/10 rounded text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
                       ))}
                     </div>
-                  )}
-
-                  <div className="flex justify-end gap-1">
-                    {col.id !== 'done' && (
-                      <button 
-                        onClick={() => handleMoveStory(story.id, COLUMNS[COLUMNS.findIndex(c => c.id === col.id) + 1].id)}
-                        className="p-1.5 hover:bg-indigo-500/10 rounded text-indigo-400 transition-colors"
-                        title="Mover para próxima etapa"
-                      >
-                        <ArrowRight size={14} />
-                      </button>
-                    )}
                   </div>
-                </motion.div>
-              ))}
-
-              {col.id === 'todo' && backlogStories.length > 0 && (
-                <div className="pt-4 border-t border-[#252a38] mt-4">
-                  <h4 className="text-[10px] font-mono text-slate-600 uppercase mb-3 px-1">Disponível no Backlog</h4>
-                  <div className="space-y-2">
-                    {backlogStories.slice(0, 3).map(story => (
-                      <div key={story.id} className="flex items-center justify-between p-2 bg-[#0d0f14] rounded-lg border border-[#252a38] group">
-                        <span className="text-xs text-slate-500 truncate pr-2">{story.title}</span>
-                        <button 
-                          onClick={() => handleAddToIteration(story.id)}
-                          className="p-1 hover:bg-indigo-500/10 rounded text-indigo-400 opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                )}
+              </SortableContext>
+            </KanbanColumn>
+          ))}
+          
+          <DragOverlay>
+            {activeId ? (
+              <div className="bg-[#1a1e28] border border-indigo-500/50 p-4 rounded-xl shadow-2xl opacity-90 scale-105 cursor-grabbing">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-mono text-indigo-400 font-bold bg-indigo-400/10 px-1.5 py-0.5 rounded">
+                    {stories.find(s => s.id === activeId)?.points} PTS
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
+                <h4 className="text-sm font-medium mb-1">{stories.find(s => s.id === activeId)?.title}</h4>
+                <p className="text-xs text-slate-500 line-clamp-2">{stories.find(s => s.id === activeId)?.description}</p>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {/* View Story Modal */}
@@ -393,34 +631,36 @@ export default function Kanban({ project }: KanbanProps) {
                 <div className="space-y-2">
                   {viewingStory.tasks && viewingStory.tasks.length > 0 ? (
                     viewingStory.tasks.map((task: Task) => (
-                      <div key={task.id} className="flex items-center justify-between bg-[#0d0f14] border border-[#252a38] p-3 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => handleToggleTask(task.id, task.status)}
-                            className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${
-                              task.status === 'done' 
-                                ? 'bg-emerald-500 border-emerald-500 text-white' 
-                                : 'border-[#252a38] hover:border-slate-500'
-                            }`}
-                          >
-                            {task.status === 'done' && <CheckCircle2 size={12} />}
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <span className={`text-sm block ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-                              {task.title}
-                            </span>
-                            {task.observation && (
-                              <p className="text-[10px] text-slate-500 italic mt-0.5">{task.observation}</p>
-                            )}
+                      <div key={task.id} className="flex flex-col bg-[#0d0f14] border border-[#252a38] p-3 rounded-lg gap-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <button 
+                              onClick={() => handleToggleTask(task.id, task.status)}
+                              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 ${
+                                task.status === 'done' 
+                                  ? 'bg-emerald-500 border-emerald-500 text-white' 
+                                  : 'border-[#252a38] hover:border-slate-500'
+                              }`}
+                            >
+                              {task.status === 'done' && <CheckCircle2 size={12} />}
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <span className={`text-sm block ${task.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                                {task.title}
+                              </span>
+                              {task.observation && (
+                                <p className="text-[10px] text-slate-500 italic mt-0.5">{task.observation}</p>
+                              )}
+                            </div>
                           </div>
+                          {task.due_date && (
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[10px] text-indigo-400 font-mono font-bold">
+                              <Calendar size={12} />
+                              <span>{formatDate(task.due_date)}</span>
+                            </div>
+                          )}
                         </div>
                         <TaskActions taskId={task.id} />
-                        {task.due_date && (
-                          <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[10px] text-indigo-400 font-mono font-bold">
-                            <Calendar size={12} />
-                            <span>{formatDate(task.due_date)}</span>
-                          </div>
-                        )}
                       </div>
                     ))
                   ) : (

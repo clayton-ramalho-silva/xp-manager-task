@@ -84,6 +84,13 @@ try {
   // Column already exists or table doesn't exist yet
 }
 
+// Migration: Add due_date column to user_stories if it doesn't exist
+try {
+  db.prepare('ALTER TABLE user_stories ADD COLUMN due_date TEXT').run();
+} catch (e) {
+  // Column already exists
+}
+
 // Seed Admin User
 const adminExists = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@example.com');
 if (!adminExists) {
@@ -255,7 +262,7 @@ async function startServer() {
   app.get('/api/projects/:projectId/stories', authenticate, (req, res) => {
     const stories = db.prepare('SELECT * FROM user_stories WHERE project_id = ? ORDER BY priority DESC').all(req.params.projectId) as any[];
     for (const story of stories) {
-      story.tasks = db.prepare('SELECT * FROM tasks WHERE story_id = ?').all(story.id);
+      story.tasks = db.prepare('SELECT * FROM tasks WHERE story_id = ? ORDER BY (due_date IS NULL OR due_date = \'\') ASC, due_date ASC, position ASC, id DESC').all(story.id);
     }
     res.json(stories);
   });
@@ -282,6 +289,9 @@ async function startServer() {
         due_date ?? current.due_date,
         req.params.id
       );
+    
+    updateStoryDueDate(Number(req.params.id));
+    
     res.json({ success: true });
   });
 
@@ -291,9 +301,47 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.put('/api/stories/reorder', authenticate, (req, res) => {
+    const { stories } = req.body; // Array of { id, priority }
+    const update = db.prepare('UPDATE user_stories SET priority = ? WHERE id = ?');
+    
+    const transaction = db.transaction((storyList) => {
+      for (const story of storyList) {
+        update.run(story.priority, story.id);
+      }
+    });
+
+    transaction(stories);
+    res.json({ success: true });
+  });
+
   // Tasks
+  const updateStoryDueDate = (storyId: number | string) => {    
+    const result = db.prepare(`
+      UPDATE user_stories 
+      SET due_date = (
+        SELECT MAX(due_date) 
+        FROM tasks 
+        WHERE story_id = ? AND due_date IS NOT NULL AND due_date != '' AND status != 'done'
+      ) 
+      WHERE id = ?
+    `).run(storyId, storyId);    
+    
+    const updated = db.prepare('SELECT due_date FROM user_stories WHERE id = ?').get(storyId) as any;    
+  };
+
+  // One-time sync for existing stories
+  const syncAllStoryDueDates = () => {
+    const stories = db.prepare('SELECT id FROM user_stories').all() as any[];
+    for (const story of stories) {
+      updateStoryDueDate(story.id);
+    }
+  };
+
+  syncAllStoryDueDates();
+
   app.get('/api/stories/:storyId/tasks', authenticate, (req, res) => {
-    const tasks = db.prepare('SELECT * FROM tasks WHERE story_id = ? ORDER BY position ASC, id ASC').all(req.params.storyId);
+    const tasks = db.prepare('SELECT * FROM tasks WHERE story_id = ? ORDER BY (due_date IS NULL OR due_date = \'\') ASC, due_date ASC, position ASC, id DESC').all(req.params.storyId);
     res.json(tasks);
   });
 
@@ -304,6 +352,9 @@ async function startServer() {
     const nextPos = (maxPos?.maxPos || 0) + 1;
     
     const result = db.prepare('INSERT INTO tasks (story_id, title, status, position, due_date, observation) VALUES (?, ?, ?, ?, ?, ?)').run(story_id, title, status || 'todo', nextPos, due_date, observation);
+    
+    updateStoryDueDate(story_id);
+    
     res.json({ id: result.lastInsertRowid, ...req.body, position: nextPos });
   });
 
@@ -328,12 +379,21 @@ async function startServer() {
 
     db.prepare('UPDATE tasks SET status = ?, title = ?, due_date = ?, observation = ? WHERE id = ?')
       .run(status ?? current.status, title ?? current.title, due_date ?? current.due_date, observation ?? current.observation, req.params.id);
+    
+    updateStoryDueDate(current.story_id);
+    
     res.json({ success: true });
   });
 
   app.delete('/api/tasks/:id', authenticate, (req, res) => {
+    const current = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id) as any;
     db.prepare('DELETE FROM task_actions WHERE task_id = ?').run(req.params.id);
     db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id);
+    
+    if (current) {
+      updateStoryDueDate(current.story_id);
+    }
+    
     res.json({ success: true });
   });
 
